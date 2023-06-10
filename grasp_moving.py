@@ -88,7 +88,7 @@ if __name__ == "__main__":
             action = agent.select_action(state, evaluate=True)
             next_state, reward, terminated, truncated, _ = env.step(action) # Step
             # to observe
-            time.sleep(0.1)
+            time.sleep(0.01)
             episode_reward += reward
             state = next_state
     env.close()

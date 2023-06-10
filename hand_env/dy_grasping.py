@@ -166,8 +166,9 @@ class DyGrasping(HandGymEnv):
         # d_p, d_r = d_p / update_fre, d_r / update_fre
         
         for _ in range(update_fre*2):
-            p.stepSimulation()
             self.convey.step()
+            p.stepSimulation()
+            
         
         # for _ in range(update_fre):
         #     if self.dynamic_grasp:
