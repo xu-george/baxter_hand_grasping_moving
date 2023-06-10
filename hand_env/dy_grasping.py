@@ -16,11 +16,14 @@ from hand_bullet import BaxterHand
 from baxter_hand_gym import HandGymEnv
 from conver_world.conver import Conveyor
 
+# A global variable to segment one step of the simulation
+update_freq = 240
+
 # define some basic trajectories
 def oval_traj(convId):    
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=2.5e-2/240
+    velocity=2.5e-2/update_freq
     radius_x = 0.15
     radius_y = 0.3
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
@@ -30,7 +33,7 @@ def oval_traj(convId):
 def circle_traj(convId):
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=5*2.5e-2/240  # the change of angle per step
+    velocity=2.5e-2/update_freq  # the change of angle per step
     radius = 0.2
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
                        radius=radius, traj_type="circle")
@@ -40,7 +43,7 @@ def sin_traj(convId):
     StartPos = [0, -0.4, 0.745]    
     frequency = 2.5*np.pi
     radius = 0.2
-    velocity = np.array([0, 5e-3/240, 0])   # the velocity across the y axis
+    velocity = np.array([0, 5e-3/update_freq, 0])   # the velocity across the y axis
     conver = Conveyor(conveyor_id=convId, velocity=velocity, init_pos=StartPos, frequency=frequency, 
                        radius=radius, traj_type="sinousoid")
     return conver
@@ -49,7 +52,7 @@ def line_traj(convId):
     StartPos = [0, -0.4, 0.745]
     end_point = [0, 0.4, 0.745]
     StartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-    velocity = np.array([0, 5*5e-3/240, 0])   # the velocity across the y axis
+    velocity = np.array([0, 2*5e-3/update_freq, 0])   # the velocity across the y axis
     conver = Conveyor(conveyor_id=convId, velocity=velocity, init_pos=StartPos, end_pos=end_point, 
                       init_orn=StartOrientation, traj_type="line")
     return conver  
@@ -160,22 +163,15 @@ class DyGrasping(HandGymEnv):
         
         # TODO: segment the action into several steps 
         self.hand.gripper_control(d_gripper)
-        self.hand.osc([d_p, d_r], self.base_contraint)
+        #self.hand.osc([d_p, d_r], self.base_contraint)
         
-        update_fre = int(self.control_time/self._timeStep)
-        # d_p, d_r = d_p / update_fre, d_r / update_fre
+        update_fre = 240
+        d_p, d_r = d_p / update_fre, d_r / update_fre
         
-        for _ in range(update_fre*2):
+        for _ in range(update_fre):
             self.convey.step()
-            p.stepSimulation()
-            
-        
-        # for _ in range(update_fre):
-        #     if self.dynamic_grasp:
-        #         self.convey.step()
-        #     self.hand.osc([d_p, d_r], self.base_contraint)            
-        #     p.stepSimulation()
-        #     #time.sleep(self._timeStep/20)     
+            self.hand.osc([d_p, d_r], self.base_contraint)
+            p.stepSimulation()          
 
         # update obs
         obs = self.get_physic_state() 
