@@ -19,6 +19,10 @@ from conver_world.conver import Conveyor
 # A global variable to segment one step of the simulation
 update_freq = 240
 
+"""
+In this code, we use fake trajectory prediction
+"""
+
 # define some basic trajectories
 def oval_traj(convId):    
     start_angle = -np.pi/2
@@ -68,7 +72,7 @@ conveyor_path = os.path.join(current_path, "models/objects/block/covery.urdf")
 
 # inherit HandGymEnv
 class DyGrasping(HandGymEnv):
-    def __init__(self, max_episode_steps=100,real_time=False, renders=True, reward_type="sparse", control_model="p_o", traj="line") -> None:
+    def __init__(self, max_episode_steps=100,real_time=False, renders=True, reward_type="sparse", control_model="p_o", traj="line", predict=False) -> None:
         """
         :param max_episode_steps: the maximum number of steps in one episode
         :param real_time: whether to run the simulation in real time
@@ -80,6 +84,7 @@ class DyGrasping(HandGymEnv):
         """
         self.traj = traj
         self.real_time = real_time
+        self.predict = predict
         super(DyGrasping, self).__init__(max_episode_steps=max_episode_steps, renders=renders, reward_type=reward_type, control_model=control_model)         
 
 
@@ -143,6 +148,10 @@ class DyGrasping(HandGymEnv):
         for _ in range(int(self.control_time/self._timeStep)*10):
             p.stepSimulation()     
 
+        # add a dot to show the target position
+        if self.predict:
+            self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=3)
+
         # get object inital position
         cube_pose, _ = p.getBasePositionAndOrientation(self.obj_id)
         self.cube_init_z = cube_pose[2]
@@ -190,7 +199,11 @@ class DyGrasping(HandGymEnv):
         else:
             info["success"] = "False"     
 
-        # TODO: add if in the workspace in the info
+        # show predict object position
+        if self.predict:            
+            pre_pos, _ = self.predict_object()
+
+
 
         return obs, reward, terminated, truncated, info
     
@@ -201,7 +214,7 @@ class DyGrasping(HandGymEnv):
         end_effector_p, tran_orn = self.get_end_state()
         cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
         dist = np.linalg.norm(np.array(end_effector_p) - np.array(cube_pose))
-        step = int(64 * (1/(1+np.exp(-10*dist)) - 0.5))
+        step = int(128 * (1/(1+np.exp(-10*dist)) - 0.5))
         d_p, d_o = self.convey.traj.predict(step)
 
         # update the object position and orientation
@@ -210,3 +223,9 @@ class DyGrasping(HandGymEnv):
         theta = cube_orn[2] + d_o        
         return cube_pose, theta
     
+    def draw_point(self, position):
+        """
+        draw the vitural point in the pybullet
+        """
+        p.removeUserDebugItem(self.dot_id)
+        self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=3)
