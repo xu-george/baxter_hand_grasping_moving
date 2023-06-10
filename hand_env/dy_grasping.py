@@ -33,7 +33,7 @@ def oval_traj(convId):
 def circle_traj(convId):
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=0.1*2.5e-2/update_freq  # the change of angle per step
+    velocity=2.5e-2/update_freq  # the change of angle per step
     radius = 0.2
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
                        radius=radius, traj_type="circle")
@@ -170,7 +170,7 @@ class DyGrasping(HandGymEnv):
         
         for _ in range(update_fre):
             self.convey.step()
-            self.hand.osc([d_p, d_r], self.base_contraint)
+            self.hand.osc([d_p, d_r], self.base_contraint)            
             p.stepSimulation()          
 
         # update obs
