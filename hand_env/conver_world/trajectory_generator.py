@@ -18,14 +18,12 @@ class line_generator:
         self.lineWidth = lineWidth
         self.velocity = velocity
         self.orn = [0, 0, 0, 1]
-
         self.reset()
 
     def draw(self):
         p.addUserDebugLine(self.start_point, self.end_point, self.line_color, lineWidth=self.lineWidth)
 
-    def reset(self):
-        self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=5)
+    def reset(self):        
         self.step_time = 0
         self.position = np.array(self.start_point)
         self.orn = [0, 0, 0, 1]
@@ -41,11 +39,7 @@ class line_generator:
         steps: the number of steps to predict
         return:predict the change of position and orientation
         """        
-        pre_position = self.velocity * steps
-        # update dot 
-        p.removeUserDebugItem(self.dot_id)
-        self.dot_id = p.addUserDebugText("*", pre_position+self.position, textColorRGB=[0, 1, 0], textSize=1)
-
+        pre_position = self.velocity * steps      
         return [pre_position, 0]
     
 

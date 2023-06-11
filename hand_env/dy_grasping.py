@@ -37,7 +37,7 @@ def oval_traj(convId):
 def circle_traj(convId):
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=0.01*2.5e-2/update_freq  # the change of angle per step
+    velocity=2.5e-2/update_freq  # the change of angle per step
     radius = 0.2
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
                        radius=radius, traj_type="circle")
@@ -56,7 +56,7 @@ def line_traj(convId):
     StartPos = [0, -0.4, 0.745]
     end_point = [0, 0.4, 0.745]
     StartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-    velocity = np.array([0, 2*5e-3/update_freq, 0])   # the velocity across the y axis
+    velocity = np.array([0, 3*5e-3/update_freq, 0])   # the velocity across the y axis
     conver = Conveyor(conveyor_id=convId, velocity=velocity, init_pos=StartPos, end_pos=end_point, 
                       init_orn=StartOrientation, traj_type="line")
     return conver  
@@ -128,8 +128,7 @@ class DyGrasping(HandGymEnv):
         self.convey.reset()
 
         # load object
-        obj_pose, _ = p.getBasePositionAndOrientation(self.convId)             
-        # TODO: find the centre point of the conveyor        
+        obj_pose, _ = p.getBasePositionAndOrientation(self.convId)          
         ang = np.pi * random.random() / 4        
         obj_orn = p.getQuaternionFromEuler([0, 0, ang])
 
@@ -150,13 +149,51 @@ class DyGrasping(HandGymEnv):
 
         # add a dot to show the target position
         if self.predict:
-            self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=3)
+            self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=10)
 
         # get object inital position
         cube_pose, _ = p.getBasePositionAndOrientation(self.obj_id)
         self.cube_init_z = cube_pose[2]
         return self.get_physic_state() 
     
+    def get_physic_state(self):
+        # get physic state
+        """
+        The physic state contain:
+        1. joint cos ().  3.end_effector pose
+        4. normalized gripper_state. 5.gripper to cube.
+        """        
+        motor_id = self.hand.motorIndices
+        joint_states = p.getJointStates(self.handId, motor_id) 
+
+        cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
+        # get euler angle from quaternion
+        cube_orn = list(p.getEulerFromQuaternion(cube_orn))
+
+        if self.predict and (not self._touched()):
+            pre_pose, pre_theta = self.predict_object()
+            cube_pose = pre_pose            
+            cube_orn[2] = pre_theta
+            
+            # update the dot position
+            p.removeUserDebugItem(self.dot_id) 
+            self.dot_id = p.addUserDebugText("*", pre_pose, textColorRGB=[1, 0, 0], textSize=1)
+
+        # get end effector state
+        end_effector_p, tran_orn = self.get_end_state()
+
+        # get joint state -- normalized to [-1, 1]
+        gripper_state = 2 * (- joint_states[-1][0] / self.hand.gripper_open) - 1
+        dist = np.linalg.norm(np.array(end_effector_p) - np.array(cube_pose))
+
+        if self._control_model == "p_o":
+            physic_state = np.concatenate((end_effector_p, cube_pose, [gripper_state], [dist], [tran_orn[2]], [cube_orn[2]]), axis=0)
+        elif self._control_model == "p":
+            physic_state = np.concatenate((end_effector_p, cube_pose, [gripper_state], [dist]), axis=0)
+        elif self._control_model == "o":
+            physic_state = np.array([tran_orn[2], cube_orn[2]])      
+        return physic_state 
+
     def step(self, action):
         # take the action
         self._envStepCounter += 1
@@ -197,13 +234,7 @@ class DyGrasping(HandGymEnv):
         if self._success():
             info["success"] = "True"
         else:
-            info["success"] = "False"     
-
-        # show predict object position
-        if self.predict:            
-            pre_pos, _ = self.predict_object()
-
-
+            info["success"] = "False"   
 
         return obs, reward, terminated, truncated, info
     
@@ -214,7 +245,7 @@ class DyGrasping(HandGymEnv):
         end_effector_p, tran_orn = self.get_end_state()
         cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
         dist = np.linalg.norm(np.array(end_effector_p) - np.array(cube_pose))
-        step = int(128 * (1/(1+np.exp(-10*dist)) - 0.5))
+        step = int(32 * 240 * (1/(1+np.exp(-4*dist)) - 0.5))
         d_p, d_o = self.convey.traj.predict(step)
 
         # update the object position and orientation
