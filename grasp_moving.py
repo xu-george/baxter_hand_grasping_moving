@@ -18,7 +18,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 
     parser.add_argument('--env-name', default='BaxterPaddleGrasp_auto_position')
-    parser.add_argument('--epoch_step', default=150)
+    parser.add_argument('--epoch_step', default=200)
 
     parser.add_argument('--policy', default="Gaussian",
                         help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
@@ -64,8 +64,8 @@ if __name__ == "__main__":
     args = parse_args()
     if args.seed == -1:
         args.__dict__["seed"] = np.random.randint(1, 10000)
-
-    env = FrameStack(DyGrasping(renders=True, max_episode_steps=100, reward_type="dense", control_model="p", traj="circle", predict=False), 3)
+    
+    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="circle", predict=True), 3)
     # env.seed(args.seed)
     env.action_space.seed(args.seed)
 
@@ -75,8 +75,8 @@ if __name__ == "__main__":
     # Agent
     #args.hidden_size = 16
     agent = SAC(env.observation_space.shape[0], env.action_space, args)
-    # agent.load_checkpoint("checkpoints/BaxterPaddleGrasp_auto_position")
-    agent.load_checkpoint("trained_model/position")
+    agent.load_checkpoint("checkpoints/BaxterPaddleGrasp_auto_position")
+    # agent.load_checkpoint("trained_model/position")
 
     episodes = 30
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         state = env.reset()               
         episode_reward = 0
         terminated, truncated = False, False
-        
+
         while not (terminated or truncated):
             action = agent.select_action(state, evaluate=True)
             next_state, reward, terminated, truncated, _ = env.step(action) # Step

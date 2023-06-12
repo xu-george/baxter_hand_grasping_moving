@@ -27,7 +27,7 @@ In this code, we use fake trajectory prediction
 def oval_traj(convId):    
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=2.5e-2/update_freq
+    velocity=2*2.5e-2/update_freq
     radius_x = 0.15
     radius_y = 0.3
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
@@ -37,7 +37,7 @@ def oval_traj(convId):
 def circle_traj(convId):
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=1.5*2.5e-2/update_freq  # the change of angle per step
+    velocity=0.7*2.5e-2/update_freq  # the change of angle per step
     radius = 0.2
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
                        radius=radius, traj_type="circle")
@@ -147,10 +147,6 @@ class DyGrasping(HandGymEnv):
         for _ in range(int(self.control_time/self._timeStep)*10):
             p.stepSimulation()     
 
-        # add a dot to show the target position
-        if self.predict:
-            self.frame_id = self.draw_frame([0,0,0], [0,0,0,1])
-
         # get object inital position
         cube_pose, _ = p.getBasePositionAndOrientation(self.obj_id)
         self.cube_init_z = cube_pose[2]
@@ -167,6 +163,8 @@ class DyGrasping(HandGymEnv):
         joint_states = p.getJointStates(self.handId, motor_id) 
 
         cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
+        # plot the cube frame
+        self.draw_frame(cube_pose, cube_orn, 0.5)
         # get euler angle from quaternion
         cube_orn = list(p.getEulerFromQuaternion(cube_orn))
 
@@ -175,9 +173,8 @@ class DyGrasping(HandGymEnv):
             cube_pose = pre_pose            
             cube_orn[2] = pre_theta            
             
-            # update the dot position
-            p.removeUserDebugItem(self.frame_id)
-            self.frame_id = self.draw_frame(cube_pose, p.getQuaternionFromEuler([0, 0, cube_orn[2]]))
+            # update the dot position      
+            self.draw_frame(cube_pose, p.getQuaternionFromEuler([0, 0, cube_orn[2]]), 1, 0.05)
 
         # get end effector state
         end_effector_p, tran_orn = self.get_end_state()
@@ -245,7 +242,7 @@ class DyGrasping(HandGymEnv):
         end_effector_p, tran_orn = self.get_end_state()
         cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
         dist = np.linalg.norm(np.array(end_effector_p) - np.array(cube_pose))
-        step = int(32 * 240 * (1/(1+np.exp(-4*dist)) - 0.5))
+        step = int(64 * 240 * (1/(1+np.exp(-4*dist)) - 0.5))
 
         d_p, d_o = self.convey.traj.predict(step)
 
@@ -256,11 +253,10 @@ class DyGrasping(HandGymEnv):
         theta = cube_orn[2] + d_o        
         return cube_pose, theta
     
-    def draw_frame(self, position, orientation):
-
+    def draw_frame(self, position, orientation, color=1, size=0.05):
         # Create the arrows for the frame
-        arrow_length = 0.1
-        arrow_colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # X: Red, Y: Green, Z: Blue
+        arrow_length = size
+        arrow_colors = color * np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])  # X: Red, Y: Green, Z: Blue
         orn = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
         for i in range(3):
             # Calculate the direction of the arrow based on the orientation
@@ -271,5 +267,4 @@ class DyGrasping(HandGymEnv):
 
             # Draw the arrow
             arrow_id = p.addUserDebugLine(position, tip_position, lineColorRGB=arrow_colors[i], lineWidth=3,
-                                        parentObjectUniqueId=-1, parentLinkIndex=-1)
-        return arrow_id
+                                          parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0.1)        
