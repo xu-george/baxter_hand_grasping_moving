@@ -5,7 +5,7 @@ import math
 import time 
 
 """
-In this simple version, we just use fake prediction, 
+declaim: In this simple version, we just use fake prediction (The ground truth of trajectory is known), 
 while for the real robot, we use lstm to predict the trajectory
 """
 
@@ -85,8 +85,9 @@ class sinousoid_generator:
         self.time_step = 0
         # set the initial orientation
         tangent_vector = np.array([1, self.amplitude * self.frequency * math.cos(self.frequency * self.start_point[0]), 0])
-        tangent_vector /= np.linalg.norm(tangent_vector)       
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])
+        tangent_vector /= np.linalg.norm(tangent_vector) 
+        self.angle = math.atan2(tangent_vector[1], tangent_vector[0])      
+        self.orn = p.getQuaternionFromEuler([0, 0,self.angle])
         return [self.position, self.orn]  
 
     def step(self):
@@ -101,7 +102,7 @@ class sinousoid_generator:
         tangent_vector = np.array([1, self.amplitude * self.frequency * math.cos(self.frequency * self.position[0]), 0])
         tangent_vector /= np.linalg.norm(tangent_vector)
         self.angle = math.atan2(tangent_vector[1], tangent_vector[0])
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])   
+        self.orn = p.getQuaternionFromEuler([0, 0, self.angle])   
 
         return [self.position, self.orn]
     
@@ -114,9 +115,9 @@ class sinousoid_generator:
         x = self.amplitude * math.sin(self.frequency * y) + self.start_point[0]
         z = self.start_point[2]
         d_p = np.array([x, y, z]) - self.position
-        tangent_vector = np.array([1, self.amplitude * self.frequency * math.cos(self.frequency * self.position[0]), 0])
-        new_theat = math.atan2(tangent_vector[1], tangent_vector[0])        
-        return [d_p, new_theat- self.angle]
+        tangent_vector = np.array([1, self.amplitude * self.frequency * math.cos(self.frequency * x), 0])
+        new_theta = math.atan2(tangent_vector[1], tangent_vector[0])        
+        return [d_p, new_theta- self.angle]
 
 
 # circle generator
@@ -160,8 +161,9 @@ class circle_generator:
                          self.centre_point[2]]
         
         
-        tangent_vector = [1, 0, 0]
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])
+        tangent_vector = [math.cos(self.angle + math.pi / 2), math.sin(self.angle + math.pi / 2), 0]
+        self.theta = math.atan2(tangent_vector[1], tangent_vector[0])
+        self.orn = p.getQuaternionFromEuler([0, 0, self.theta])
         return [self.position, self.orn]
     
     def step(self):
@@ -170,11 +172,27 @@ class circle_generator:
         self.position = [self.radius * math.cos(self.angle) + self.centre_point[0],
                          self.radius * math.sin(self.angle) + self.centre_point[1],
                          self.centre_point[2]]
+        self.position = np.array(self.position)
         
         tangent_vector = [math.cos(self.angle + math.pi / 2), math.sin(self.angle + math.pi / 2), 0]
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])
+        self.theta = math.atan2(tangent_vector[1], tangent_vector[0])  # the rotation angle with z axis
+        self.orn = np.array(p.getQuaternionFromEuler([0, 0, self.theta]))        
         return [self.position, self.orn]
+    
+    def predict(self, steps):
+        """
+        give the preiction step, return the change of position and orientation
+        """
+        angle = self.angle + steps * self.velocity
+        position = [self.radius * math.cos(angle) + self.centre_point[0],
+                    self.radius * math.sin(angle) + self.centre_point[1],
+                    self.centre_point[2]]
+        position = np.array(position)
+        d_p = position - self.position
 
+        tangent_vector = [math.cos(angle + math.pi / 2), math.sin(angle + math.pi / 2), 0]
+        theta =math.atan2(tangent_vector[1], tangent_vector[0])        
+        return [d_p, theta- self.theta]
 
 # oval generator
 class oval_generator:
@@ -219,7 +237,8 @@ class oval_generator:
         
         tangent_vector = [1, -self.radius_x * math.sin(self.start_anglele) / self.radius_y, 0]
         tangent_vector /= np.linalg.norm(tangent_vector)
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])       
+        self.theta = math.atan2(tangent_vector[1], tangent_vector[0])
+        self.orn = p.getQuaternionFromEuler([0, 0, self.theta])       
 
         return [self.position, self.orn]
     
@@ -232,6 +251,23 @@ class oval_generator:
         
         tangent_vector = [1, -self.radius_x * math.sin(self.angle) / self.radius_y, 0]
         tangent_vector /= np.linalg.norm(tangent_vector)
-        self.orn = p.getQuaternionFromEuler([0, 0, math.atan2(tangent_vector[1], tangent_vector[0])])       
+        self.theta = math.atan2(tangent_vector[1], tangent_vector[0])        
+        self.orn = p.getQuaternionFromEuler([0, 0, self.theta])       
 
-        return [self.position, self.orn]       
+        return [self.position, self.orn]      
+
+    def predict(self, steps):
+        """
+        give the preiction step, return the change of position and orientation
+        """
+        angle = self.angle + steps * self.velocity
+        position = [self.centre_point[0] + self.radius_x * math.cos(angle),
+                    self.centre_point[1] + self.radius_y * math.sin(angle),
+                    self.centre_point[2]]
+        position = np.array(position)
+        d_p = position - self.position
+
+        tangent_vector = [1, -self.radius_x * math.sin(angle) / self.radius_y, 0]
+        tangent_vector /= np.linalg.norm(tangent_vector)
+        theta = math.atan2(tangent_vector[1], tangent_vector[0])       
+        return [d_p, theta- self.theta] 

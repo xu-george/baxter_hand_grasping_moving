@@ -7,7 +7,7 @@ import torch
 import time
 from hand_env.dy_grasping import DyGrasping
 
-env = DyGrasping(renders=True, max_episode_steps=100, reward_type="dense", control_model="p_o", traj="line", predict=True)
+env = DyGrasping(renders=True, max_episode_steps=100, reward_type="dense", control_model="p_o", traj="circle", predict=True)
 
 for i in range(100000): 
 

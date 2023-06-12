@@ -37,7 +37,7 @@ def oval_traj(convId):
 def circle_traj(convId):
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=2.5e-2/update_freq  # the change of angle per step
+    velocity=1.5*2.5e-2/update_freq  # the change of angle per step
     radius = 0.2
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
                        radius=radius, traj_type="circle")
@@ -149,7 +149,7 @@ class DyGrasping(HandGymEnv):
 
         # add a dot to show the target position
         if self.predict:
-            self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=10)
+            self.frame_id = self.draw_frame([0,0,0], [0,0,0,1])
 
         # get object inital position
         cube_pose, _ = p.getBasePositionAndOrientation(self.obj_id)
@@ -173,11 +173,11 @@ class DyGrasping(HandGymEnv):
         if self.predict and (not self._touched()):
             pre_pose, pre_theta = self.predict_object()
             cube_pose = pre_pose            
-            cube_orn[2] = pre_theta
+            cube_orn[2] = pre_theta            
             
             # update the dot position
-            p.removeUserDebugItem(self.dot_id) 
-            self.dot_id = p.addUserDebugText("*", pre_pose, textColorRGB=[1, 0, 0], textSize=1)
+            p.removeUserDebugItem(self.frame_id)
+            self.frame_id = self.draw_frame(cube_pose, p.getQuaternionFromEuler([0, 0, cube_orn[2]]))
 
         # get end effector state
         end_effector_p, tran_orn = self.get_end_state()
@@ -246,17 +246,30 @@ class DyGrasping(HandGymEnv):
         cube_pose, cube_orn = p.getBasePositionAndOrientation(self.obj_id)
         dist = np.linalg.norm(np.array(end_effector_p) - np.array(cube_pose))
         step = int(32 * 240 * (1/(1+np.exp(-4*dist)) - 0.5))
+
         d_p, d_o = self.convey.traj.predict(step)
 
         # update the object position and orientation
         cube_pose = np.array(cube_pose) + d_p
         cube_orn = p.getEulerFromQuaternion(cube_orn)
+
         theta = cube_orn[2] + d_o        
         return cube_pose, theta
     
-    def draw_point(self, position):
-        """
-        draw the vitural point in the pybullet
-        """
-        p.removeUserDebugItem(self.dot_id)
-        self.dot_id = p.addUserDebugText(".", [0, 0, 0], textColorRGB=[0, 1, 0], textSize=3)
+    def draw_frame(self, position, orientation):
+
+        # Create the arrows for the frame
+        arrow_length = 0.1
+        arrow_colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # X: Red, Y: Green, Z: Blue
+        orn = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
+        for i in range(3):
+            # Calculate the direction of the arrow based on the orientation
+            arrow_direction = orn[:, i]
+
+            # Calculate the tip position based on the base position and orientation
+            tip_position = position + arrow_length * arrow_direction
+
+            # Draw the arrow
+            arrow_id = p.addUserDebugLine(position, tip_position, lineColorRGB=arrow_colors[i], lineWidth=3,
+                                        parentObjectUniqueId=-1, parentLinkIndex=-1)
+        return arrow_id
