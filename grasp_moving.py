@@ -65,7 +65,7 @@ if __name__ == "__main__":
     if args.seed == -1:
         args.__dict__["seed"] = np.random.randint(1, 10000)
     
-    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="circle", predict=True), 3)
+    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="sin", predict=False), 3)
     # env.seed(args.seed)
     env.action_space.seed(args.seed)
 

@@ -58,7 +58,7 @@ class HandGymEnv(gym.Env):
         self.observation_space = {}        
 
         self.v_end = 0.05   # the velocity of end-effector
-        self.r_end = 0.1    # the rotation of end-effector
+        self.r_end = 0.5   # the rotation of end-effector
         self.v_gripper = 2  # need at least 1 steps to close    
 
         # set the initial position and orientation of the gripper
