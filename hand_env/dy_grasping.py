@@ -52,11 +52,11 @@ def sin_traj(convId):
                        radius=radius, traj_type="sinousoid")
     return conver
 
-def line_traj(convId):
+def line_traj(convId, speed=1):
     StartPos = [0, -0.4, 0.745]
     end_point = [0, 0.4, 0.745]
     StartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-    velocity = np.array([0, 3*5e-3/update_freq, 0])   # the velocity across the y axis
+    velocity = np.array([0, speed * 2*5e-3/update_freq, 0])   # the velocity across the y axis
     conver = Conveyor(conveyor_id=convId, velocity=velocity, init_pos=StartPos, end_pos=end_point, 
                       init_orn=StartOrientation, traj_type="line")
     return conver  
@@ -72,7 +72,7 @@ conveyor_path = os.path.join(current_path, "models/objects/block/covery.urdf")
 
 # inherit HandGymEnv
 class DyGrasping(HandGymEnv):
-    def __init__(self, max_episode_steps=100,real_time=False, renders=True, reward_type="sparse", control_model="p_o", traj="line", predict=False) -> None:
+    def __init__(self, max_episode_steps=100,real_time=False, renders=True, reward_type="sparse", control_model="p_o", traj="line", predict=False, speed=1) -> None:
         """
         :param max_episode_steps: the maximum number of steps in one episode
         :param real_time: whether to run the simulation in real time
@@ -84,6 +84,7 @@ class DyGrasping(HandGymEnv):
         """
         self.traj = traj
         self.real_time = real_time
+        self.speed = speed
         self.predict = predict
         super(DyGrasping, self).__init__(max_episode_steps=max_episode_steps, renders=renders, reward_type=reward_type, control_model=control_model)         
 
@@ -119,7 +120,7 @@ class DyGrasping(HandGymEnv):
         elif self.traj == "oval":
             self.convey = oval_traj(self.convId)
         elif self.traj == "line":
-            self.convey = line_traj(self.convId)
+            self.convey = line_traj(self.convId, speed=self.speed)
         elif self.traj == "sin":
             self.convey = sin_traj(self.convId)
         else:

@@ -18,7 +18,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
 
     parser.add_argument('--env-name', default='BaxterPaddleGrasp_auto_position')
-    parser.add_argument('--epoch_step', default=200)
+    parser.add_argument('--epoch_step', default=100)
 
     parser.add_argument('--policy', default="Gaussian",
                         help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
@@ -55,6 +55,11 @@ def parse_args():
                         help='size of replay buffer (default: 10000000)')
     parser.add_argument('--cuda', action="store_true",
                         help='run on CUDA (default: False)')
+    
+    parser.add_argument('--traj', default="line")
+    parser.add_argument('--speed', default=1)
+    parser.add_argument('--predict', default=False)
+
     args = parser.parse_args()
 
     return parser.parse_args()
@@ -65,7 +70,7 @@ if __name__ == "__main__":
     if args.seed == -1:
         args.__dict__["seed"] = np.random.randint(1, 10000)
     
-    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="sin", predict=False), 3)
+    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="line", predict=False), 3)
     # env.seed(args.seed)
     env.action_space.seed(args.seed)
 
@@ -78,7 +83,7 @@ if __name__ == "__main__":
     agent.load_checkpoint("checkpoints/BaxterPaddleGrasp_auto_position")
     # agent.load_checkpoint("trained_model/position")
 
-    episodes = 30
+    episodes = 50
 
     for _  in range(episodes):
 
@@ -88,7 +93,7 @@ if __name__ == "__main__":
 
         while not (terminated or truncated):
             action = agent.select_action(state, evaluate=True)
-            next_state, reward, terminated, truncated, _ = env.step(action) # Step
+            next_state, reward, terminated, truncated, info = env.step(action) # Step
             #to observe
             time.sleep(0.01)
             episode_reward += reward
