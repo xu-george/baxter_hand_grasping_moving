@@ -24,10 +24,10 @@ In this code, we use fake trajectory prediction
 """
 
 # define some basic trajectories
-def oval_traj(convId):    
+def oval_traj(convId, speed=1):    
     start_angle = -np.pi/2
     centre_point = [0, 0, 0.745]
-    velocity=2*2.5e-2/update_freq
+    velocity=speed*2.5e-2/update_freq
     radius_x = 0.15
     radius_y = 0.3
     convery = Conveyor(conveyor_id=convId, velocity=velocity, start_angle=start_angle, centre_point=centre_point,
@@ -43,11 +43,11 @@ def circle_traj(convId):
                        radius=radius, traj_type="circle")
     return convery
 
-def sin_traj(convId):
+def sin_traj(convId, speed=1):
     StartPos = [0, -0.4, 0.745]    
     frequency = 2.5*np.pi
     radius = 0.2
-    velocity = np.array([0, 5e-3/update_freq, 0])   # the velocity across the y axis
+    velocity = np.array([0, speed * 5e-3/update_freq, 0])   # the velocity across the y axis
     conver = Conveyor(conveyor_id=convId, velocity=velocity, init_pos=StartPos, frequency=frequency, 
                        radius=radius, traj_type="sinousoid")
     return conver
@@ -118,11 +118,11 @@ class DyGrasping(HandGymEnv):
         if self.traj == "circle":
             self.convey = circle_traj(self.convId)
         elif self.traj == "oval":
-            self.convey = oval_traj(self.convId)
+            self.convey = oval_traj(self.convId, speed=self.speed)
         elif self.traj == "line":
             self.convey = line_traj(self.convId, speed=self.speed)
         elif self.traj == "sin":
-            self.convey = sin_traj(self.convId)
+            self.convey = sin_traj(self.convId, speed=self.speed)
         else:
             print("No such trajectory")
         self.convey.traj.draw() 
@@ -222,6 +222,13 @@ class DyGrasping(HandGymEnv):
 
         # update terminated and truncated        
         truncated = (self._envStepCounter >= self.max_episode_steps)
+
+        # judge if fall down from convex
+        if self.predict:
+            on_convex = (p.getContactPoints(self.convId, self.obj_id) != ())
+            if (not on_convex) and (not self._touched()):
+                truncated = True
+
         # success or out of the workspace
         terminated = False #self._success()       
 
@@ -230,9 +237,9 @@ class DyGrasping(HandGymEnv):
         # update info
         info = {}
         if self._success():
-            info["success"] = "True"
+            info["success"] = 1
         else:
-            info["success"] = "False"   
+            info["success"] = 0 
 
         return obs, reward, terminated, truncated, info
     

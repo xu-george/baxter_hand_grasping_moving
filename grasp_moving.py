@@ -12,6 +12,10 @@ from hand_env.dy_grasping import DyGrasping
 import time
 from utils import FrameStack
 
+# get current path
+import os
+cur_path = os.path.abspath(os.path.dirname(__file__))
+
 
 def parse_args():
 
@@ -56,11 +60,9 @@ def parse_args():
     parser.add_argument('--cuda', action="store_true",
                         help='run on CUDA (default: False)')
     
-    parser.add_argument('--traj', default="line")
-    parser.add_argument('--speed', default=1)
-    parser.add_argument('--predict', default=False)
-
-    args = parser.parse_args()
+    parser.add_argument('--traj', default="circle")
+    parser.add_argument('--speed', default=1, type=float)
+    parser.add_argument('--predict', default="True")    
 
     return parser.parse_args()
 
@@ -69,8 +71,13 @@ if __name__ == "__main__":
     args = parse_args()
     if args.seed == -1:
         args.__dict__["seed"] = np.random.randint(1, 10000)
+
+    if args.predict == "True":
+        predict = True
+    else:
+        predict = False
     
-    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj="line", predict=False), 3)
+    env = FrameStack(DyGrasping(renders=True, max_episode_steps=args.epoch_step, reward_type="dense", control_model="p_o", traj=args.traj, predict=predict, speed=args.speed), 3)
     # env.seed(args.seed)
     env.action_space.seed(args.seed)
 
@@ -80,23 +87,35 @@ if __name__ == "__main__":
     # Agent
     #args.hidden_size = 16
     agent = SAC(env.observation_space.shape[0], env.action_space, args)
-    agent.load_checkpoint("checkpoints/BaxterPaddleGrasp_auto_position")
+    agent.load_checkpoint(cur_path + "/checkpoints/BaxterPaddleGrasp_auto_position")
     # agent.load_checkpoint("trained_model/position")
 
-    episodes = 50
+    episodes = 20
+    
+    path = cur_path + "/results/"
+    file_name = args.traj + "_" + str(args.speed) + "_" + str(args.predict) + ".txt"
 
-    for _  in range(episodes):
+    success_time = np.zeros((episodes, args.epoch_step))
+
+    for eposide in range(episodes):
 
         state = env.reset()               
         episode_reward = 0
         terminated, truncated = False, False
+        steps = 0
+        while not (terminated or truncated):         
 
-        while not (terminated or truncated):
             action = agent.select_action(state, evaluate=True)
             next_state, reward, terminated, truncated, info = env.step(action) # Step
-            #to observe
-            time.sleep(0.01)
-            episode_reward += reward
-            state = next_state
 
+            # to observe
+            # time.sleep(0.01)
+            episode_reward += reward
+            state = next_state  
+
+            success_time[eposide, steps] = info["success"]
+            steps += 1        
+
+    # save success time
+    np.savetxt(path + file_name, success_time, fmt="%d")
     env.close()

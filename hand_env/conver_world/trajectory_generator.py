@@ -72,7 +72,7 @@ class sinousoid_generator:
         curve_points = []
         for i in range(self.plot_points):
             y = 840 * i * self.velocity[1] + self.start_point[1] 
-            x = self.amplitude * math.sin(self.frequency * y) + self.start_point[0]                       
+            x = self.amplitude * math.cos(self.frequency * y) + self.start_point[0]                       
             z = self.start_point[2]
             curve_points.append([x, y, z])
 

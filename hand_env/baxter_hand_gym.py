@@ -267,7 +267,7 @@ class HandGymEnv(gym.Env):
     
     def _success(self):
         cube_pose, _ = p.getBasePositionAndOrientation(self.obj_id)
-        return cube_pose[2] - self.cube_init_z > 0.03 and self._grasped()        
+        return (cube_pose[2] - self.cube_init_z) > 0.03 and self._grasped()        
     
     def _reward(self):
         reward = 0
