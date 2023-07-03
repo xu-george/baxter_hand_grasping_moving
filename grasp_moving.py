@@ -60,9 +60,9 @@ def parse_args():
     parser.add_argument('--cuda', action="store_true",
                         help='run on CUDA (default: False)')
     
-    parser.add_argument('--traj', default="circle")
-    parser.add_argument('--speed', default=1, type=float)
-    parser.add_argument('--predict', default="True")    
+    parser.add_argument('--traj', default="line")
+    parser.add_argument('--speed', default=1.6, type=float)
+    parser.add_argument('--predict', default="False")    
 
     return parser.parse_args()
 

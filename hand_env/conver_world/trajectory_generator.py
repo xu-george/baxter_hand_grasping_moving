@@ -72,7 +72,7 @@ class sinousoid_generator:
         curve_points = []
         for i in range(self.plot_points):
             y = 840 * i * self.velocity[1] + self.start_point[1] 
-            x = self.amplitude * math.cos(self.frequency * y) + self.start_point[0]                       
+            x = self.amplitude * math.sin(self.frequency * y) + self.start_point[0]                       
             z = self.start_point[2]
             curve_points.append([x, y, z])
 
@@ -84,7 +84,7 @@ class sinousoid_generator:
         self.position = self.start_point
         self.time_step = 0
         # set the initial orientation
-        tangent_vector = np.array([1, self.amplitude * self.frequency * math.cos(self.frequency * self.start_point[0]), 0])
+        tangent_vector = np.array([1, self.amplitude * self.frequency * math.sin(self.frequency * self.start_point[0]), 0])
         tangent_vector /= np.linalg.norm(tangent_vector) 
         self.angle = math.atan2(tangent_vector[1], tangent_vector[0])      
         self.orn = p.getQuaternionFromEuler([0, 0,self.angle])
